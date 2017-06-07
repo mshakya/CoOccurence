@@ -6,53 +6,55 @@
 require(igraph)
 require(Hmisc)
 
+# set directory to whereever this code is
+setwd(".")
 ###########################root 90% OTUs###################################
 
 #this table contains both rhizosphere and endosphere otus that were clustered at 90% and then jacknifed
-merge_table<-read.table("~/Dropbox/Co-occurence/otu_table/merge_bac_fung_90_v3_R.txt",header=TRUE,row.names=1)
+merge_table <- read.table("otu_table/merge_bac_fung_90_v3_R.txt",header=TRUE,row.names=1)
 #transforming the table for correlation 
 merge_table<-t(merge_table)
 
-#removing columns/otus with sum of 1 or singletons or others
-#merge_table<-merge_table[,!(colSums(abs(merge_table)) == 1)]
+#removing columns/otus with sum of less than 5
 merge_table<-merge_table[,!(colSums(abs(merge_table)) < 5)]
-
 
 #correlation between each OTUs
 cor.merge.otu<-rcorr(merge_table,type="spearman")
 
 # correlation values spearman's
-r<-cor.merge.otu$r
+r <- cor.merge.otu$r
 
 # p-values
-p<-cor.merge.otu$P 
+p <- cor.merge.otu$P 
 
-#subset OTUs that have p-values less than 0.5
-cor.merge.otu<-ifelse(p < .05, r,0)
+#subset OTUs that have p-values less than 0.05
+cor.merge.otu <- ifelse(p < .05, r, 0)
 
 #assigns 0 to lower triangle and diagonal.
-cor.merge.otu[lower.tri(cor.merge.otu, diag=TRUE) ]<- 0
+cor.merge.otu[lower.tri(cor.merge.otu, diag = TRUE) ] <- 0
 
 #assigns 0 to correlation lower than 0.6
-cor.merge.otu[ abs(cor.merge.otu) < 0.6]<- 0
+cor.merge.otu[ abs(cor.merge.otu) < 0.6] <- 0
 
 # change to graph format
-graph <- graph.adjacency(cor.bac.otu > 0.6, mode="upper",add.rownames="OTUs") 
+graph <- graph.adjacency(cor.merge.otu, mode = "upper", add.rownames = "OTUs", weighted = TRUE) 
 
-#assigning spearman r value to Edge
-E(graph)$weight<-t(cor.merge.otu)[abs(t(cor.merge.otu))>0.6] 
-E(graph)[weight>0.6 & weight <0.8]$color <- "green" #assigning colors
-E(graph)[weight>=0.8 ]$color <- "red"
+# delete edges that have been assigned to 0
+graph <- delete.edges(graph, which(E(graph)$weight == 0))
+
+#assigning colors
+E(graph)[weight > 0.6 & weight <0.8]$color <- "green" 
+E(graph)[weight >= 0.8 ]$color <- "red"
 
 # size of vertices based on total sequence in that OTU
-V(graph)$size<-log2(colSums(merge_table)) 
+V(graph)$size <- log2(colSums(merge_table)) 
 
 # remove vertices with no connections
 new.graph <- delete.vertices(graph, which(degree(graph) < 1))
 
 #######assigning colors for fungal and bacterial otus
 #reading the file with otu affiliation
-bac_fung<-read.table("~/Dropbox/Co-occurence/others/bac_fungi_col.txt",header=TRUE)
+bac_fung<-read.table("others/bac_fungi_col.txt",header=TRUE)
 
 #assigning the otus to bacfung variable
 V(new.graph)$bacfung=as.character(bac_fung$taxa[match(V(new.graph)$name,bac_fung$OTU.ID)])
@@ -68,44 +70,44 @@ V(new.graph)$color=gsub("Fungi","red",V(new.graph)$color)
 plot(new.graph, layout=layout.fruchterman.reingold, vertex.label=NA )#structure of the graph (circle) 
 
 ##############################################################################
-
+rm(list=ls())
 ###########################rhizosphere 90% OTUs###################################
 #this table contains rhizosphere otus
-rhizo_table<-read.table("~/Dropbox/Co-occurence/otu_table/merge_bac_fung_90_v3_Rhizosphere_R.txt",header=TRUE,row.names=1)
+rhizo_table <- read.table("otu_table/merge_bac_fung_90_v3_Rhizosphere_R.txt",header=TRUE,row.names=1)
 
 #transforming the table for correlation 
-rhizo_table<-t(rhizo_table)
+rhizo_table <- t(rhizo_table)
 
 #removing columns/otus with sum of 1 or singletons or others
-#rhizo_table<-rhizo_table[,!(colSums(abs(rhizo_table)) == 1)]
-rhizo_table<-rhizo_table[,!(colSums(abs(rhizo_table)) < 5)]
-
+rhizo_table <- rhizo_table[,!(colSums(abs(rhizo_table)) < 5)]
 
 #correlation between each OTUs
-cor.rhizo.otu<-rcorr(rhizo_table,type="spearman")
+cor.rhizo.otu <- rcorr(rhizo_table,type="spearman")
 
 # correlation values spearman's
-r<-cor.rhizo.otu$r
+r <- cor.rhizo.otu$r
 
 # p-values
-p<-cor.rhizo.otu$P 
+p <- cor.rhizo.otu$P 
 
 #subset OTUs that have p-values less than 0.5
 cor.rhizo.otu<-ifelse(p < .05, r,0)
 
 #assigns 0 to lower triangle and diagonal.
-cor.rhizo.otu[lower.tri(cor.rhizo.otu, diag=TRUE) ]<- 0
+cor.rhizo.otu[lower.tri(cor.rhizo.otu, diag = TRUE) ] <- 0
 
 #assigns 0 to correlation lower than 0.6
-cor.rhizo.otu[ abs(cor.rhizo.otu) < 0.6]<- 0
+cor.rhizo.otu[ abs(cor.rhizo.otu) < 0.6] <- 0
 
 # change to graph format
 graph <- graph.adjacency(cor.rhizo.otu > 0.6, mode="upper",add.rownames="OTUs") 
 
-#assigning spearman r value to Edge
-E(graph)$weight<-t(cor.rhizo.otu)[abs(t(cor.rhizo.otu))>0.6] 
-E(graph)[weight>0.6 & weight <0.8]$color <- "green" #assigning colors
-E(graph)[weight>=0.8 ]$color <- "red"
+# delete edges that have been assigned to 0
+graph <- delete.edges(graph, which(E(graph)$weight == 0))
+
+
+E(graph)[weight > 0.6 & weight <0.8]$color <- "green" #assigning colors
+E(graph)[weight >= 0.8 ]$color <- "red"
 
 # size of vertices based on total sequence in that OTU
 V(graph)$size<-log2(colSums(rhizo_table)) 
@@ -115,7 +117,7 @@ new.graph <- delete.vertices(graph, which(degree(graph) < 1))
 
 #######assigning colors for fungal and bacterial otus
 #reading the file with otu affiliation
-bac_fung<-read.table("~/Dropbox/Co-occurence/others/bac_fungi_col.txt",header=TRUE)
+bac_fung<-read.table("others/bac_fungi_col.txt",header=TRUE)
 
 #assigning the otus to bacfung variable
 V(new.graph)$bacfung=as.character(bac_fung$taxa[match(V(new.graph)$name,bac_fung$OTU.ID)])
@@ -135,7 +137,7 @@ plot(new.graph, layout=layout.fruchterman.reingold, vertex.label=NA )#structure 
 
 ###########################endosphere 90% OTUs###################################
 #this table contains endosphere otus
-endo_table<-read.table("~/Dropbox/Co-occurence/otu_table/merge_bac_fung_90_v3_Endosphere_R.txt",header=TRUE,row.names=1)
+endo_table<-read.table("otu_table/merge_bac_fung_90_v3_Endosphere_R.txt",header=TRUE,row.names=1)
 
 #transforming the table for correlation 
 endo_table<-t(endo_table)
@@ -147,25 +149,27 @@ endo_table<-endo_table[,!(colSums(abs(endo_table)) < 5)]
 cor.endo.otu<-rcorr(endo_table,type="spearman")
 
 # correlation values spearman's
-r<-cor.endo.otu$r
+r <- cor.endo.otu$r
 
 # p-values
-p<-cor.endo.otu$P 
+p <- cor.endo.otu$P 
 
 #subset OTUs that have p-values less than 0.5
 cor.endo.otu<-ifelse(p < .05, r,0)
 
 #assigns 0 to lower triangle and diagonal.
-cor.endo.otu[lower.tri(cor.endo.otu, diag=TRUE) ]<- 0
+cor.endo.otu[lower.tri(cor.endo.otu, diag=TRUE) ] <- 0
 
 #assigns 0 to correlation lower than 0.6
-cor.endo.otu[ abs(cor.endo.otu) < 0.6]<- 0
+cor.endo.otu[ abs(cor.endo.otu) < 0.6] <- 0
 
 # change to graph format
 graph <- graph.adjacency(cor.endo.otu > 0.6, mode="upper",add.rownames="OTUs") 
 
+# delete edges that have been assigned to 0
+graph <- delete.edges(graph, which(E(graph)$weight == 0))
+
 #assigning spearman r value to Edge
-E(graph)$weight<-t(cor.endo.otu)[abs(t(cor.endo.otu))>0.6] 
 E(graph)[weight>0.6 & weight <0.8]$color <- "green" #assigning colors
 E(graph)[weight>=0.8 ]$color <- "red"
 
@@ -177,7 +181,7 @@ new.graph <- delete.vertices(graph, which(degree(graph) < 1))
 
 #######assigning colors for fungal and bacterial otus
 #reading the file with otu affiliation
-bac_fung<-read.table("~/Dropbox/Co-occurence/others/bac_fungi_col.txt",header=TRUE)
+bac_fung<-read.table("others/bac_fungi_col.txt",header=TRUE)
 
 #assigning the otus to bacfung variable
 V(new.graph)$bacfung=as.character(bac_fung$taxa[match(V(new.graph)$name,bac_fung$OTU.ID)])
@@ -198,7 +202,7 @@ plot(new.graph, layout=layout.fruchterman.reingold, vertex.label=NA )#structure 
 ###########################root 97% OTUs###################################
 
 #this table contains both rhizosphere and endosphere otus that were clustered at 90% and then jacknifed
-merge_table<-read.table("~/Dropbox/Co-occurence/otu_table/merge_bac_fung_97_v3_R.txt",header=TRUE,row.names=1)
+merge_table<-read.table("otu_table/merge_bac_fung_97_v3_R.txt",header=TRUE,row.names=1)
 #transforming the table for correlation 
 merge_table<-t(merge_table)
 
@@ -227,9 +231,10 @@ cor.merge.otu[ abs(cor.merge.otu) < 0.6]<- 0
 
 # change to graph format
 graph <- graph.adjacency(cor.merge.otu > 0.6, mode="upper",add.rownames="OTUs") 
+# delete edges that have been assigned to 0
+graph <- delete.edges(graph, which(E(graph)$weight == 0))
 
 #assigning spearman r value to Edge
-E(graph)$weight<-t(cor.merge.otu)[abs(t(cor.merge.otu))>0.6] 
 E(graph)[weight>0.6 & weight <0.8]$color <- "green" #assigning colors
 E(graph)[weight>=0.8 ]$color <- "red"
 
@@ -241,7 +246,7 @@ new.graph <- delete.vertices(graph, which(degree(graph) < 1))
 
 #######assigning colors for fungal and bacterial otus
 #reading the file with otu affiliation for bacteria and fungi, 100,000+ are fungi
-bac_fung<-read.table("~/Dropbox/Co-occurence/others/bac_fungi_col_97.txt",header=TRUE)
+bac_fung<-read.table("others/bac_fungi_col_97.txt",header=TRUE)
 
 #assigning the otus to bacfung variable
 V(new.graph)$bacfung=as.character(bac_fung$taxa[match(V(new.graph)$name,bac_fung$OTU.ID)])
@@ -261,13 +266,12 @@ plot(new.graph, layout=layout.fruchterman.reingold, vertex.label=NA )#structure 
 
 ###########################rhizosphere 97% OTUs###################################
 #this table contains rhizosphere otus
-rhizo_table<-read.table("~/Dropbox/Co-occurence/otu_table/merge_bac_fung_97_v3_Rhizosphere_R.txt",header=TRUE,row.names=1)
+rhizo_table<-read.table("otu_table/merge_bac_fung_97_v3_Rhizosphere_R.txt",header=TRUE,row.names=1)
 
 #transforming the table for correlation 
 rhizo_table<-t(rhizo_table)
 
 #removing columns/otus with sum of 1 or singletons or others
-#rhizo_table<-rhizo_table[,!(colSums(abs(rhizo_table)) == 1)]
 rhizo_table<-rhizo_table[,!(colSums(abs(rhizo_table)) < 5)]
 
 
@@ -291,9 +295,10 @@ cor.rhizo.otu[ abs(cor.rhizo.otu) < 0.6]<- 0
 
 # change to graph format
 graph <- graph.adjacency(cor.rhizo.otu > 0.6, mode="upper",add.rownames="OTUs") 
+# delete edges that have been assigned to 0
+graph <- delete.edges(graph, which(E(graph)$weight == 0))
 
 #assigning spearman r value to Edge
-E(graph)$weight<-t(cor.rhizo.otu)[abs(t(cor.rhizo.otu))>0.6] 
 E(graph)[weight>0.6 & weight <0.8]$color <- "green" #assigning colors
 E(graph)[weight>=0.8 ]$color <- "red"
 
@@ -305,7 +310,7 @@ new.graph <- delete.vertices(graph, which(degree(graph) < 1))
 
 #######assigning colors for fungal and bacterial otus
 #reading the file with otu affiliation
-bac_fung<-read.table("~/Dropbox/Co-occurence/others/bac_fungi_col_97.txt",header=TRUE)
+bac_fung<-read.table("others/bac_fungi_col_97.txt",header=TRUE)
 
 #assigning the otus to bacfung variable
 V(new.graph)$bacfung=as.character(bac_fung$taxa[match(V(new.graph)$name,bac_fung$OTU.ID)])
